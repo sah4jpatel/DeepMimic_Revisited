@@ -24,7 +24,7 @@ class RotatedRenderWrapper(gym.Wrapper):
 # Improved DeepMimic-style wrapper with proper reference state initialization and curriculum learning
 class DeepMimicRewardWrapper(gym.Wrapper):
     def __init__(self, env, reference_data, state_mean, state_std, action_mean, action_std, 
-                 w_p=0.65, w_v=0.3, w_e=0.05, w_tc=0.0):
+                 w_p=0.5, w_v=0.5, w_e=0.0, w_tc=0.0):
         super(DeepMimicRewardWrapper, self).__init__(env)
         self.reference_data = reference_data
         self.state_mean = state_mean
@@ -32,9 +32,9 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         self.action_mean = action_mean
         self.action_std = action_std
         
-        # Weights for different reward components (as in DeepMimic paper)
-        self.w_p = w_p  # pose error weight
-        self.w_v = w_v  # velocity error weight
+        # Weights for different reward components
+        self.w_p = w_p  # pose error weight - reduced from 0.65
+        self.w_v = w_v  # velocity error weight - increased from 0.3
         self.w_e = w_e  # end-effector error weight
         self.w_tc = w_tc  # task-specific weight
         
@@ -48,7 +48,7 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         
         # Curriculum learning for early termination
         self.base_pose_error_threshold = 5.0
-        self.max_pose_error_threshold = 7.0
+        self.max_pose_error_threshold = 10.0
         self.curr_pose_error_threshold = self.base_pose_error_threshold
         self.early_terminated = False
         
@@ -95,7 +95,6 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         
         # Get reference state and action for the current timestep
         ref_state = self.reference_data['states'][min(self.current_idx, self.max_idx)]
-        ref_action = self.reference_data['actions'][min(self.current_idx, self.max_idx)]
         
         # Normalize current state and reference state
         norm_obs = (obs - self.state_mean) / self.state_std
@@ -113,10 +112,10 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         ))
         
         # CRITICAL FIX: Use less aggressive dampening for better learning signal
-        pose_reward = math.exp(-0.8 * pos_error)
-        velocity_reward = math.exp(-0.02 * vel_error)  # Much less aggressive for velocities
+        pose_reward = math.exp(-0.8 * pos_error)  # Less aggressive dampening
+        velocity_reward = math.exp(-0.001 * vel_error)  # Much more lenient for velocities
         
-        # Calculate end-effector reward (simplified)
+        # Calculate end-effector reward (simplified for now)
         end_effector_reward = 1.0
         
         # Combine rewards using weights
@@ -131,13 +130,14 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         combined_reward = imitation_reward + task_reward
         
         # CRITICAL FIX: Early termination check based on position error only
-        # Use curriculum-based threshold
-        if not self.early_terminated and pos_error > self.curr_pose_error_threshold:
-            # Don't actually terminate the episode, just mark it as terminated
-            # and zero out future rewards (DeepMimic approach)
-            self.early_terminated = True
-            if self.episode_count % 10 == 0:
-                print(f"Early termination at frame {self.current_idx}. Position error: {pos_error:.4f}")
+        # Implement warmup period and curriculum-based threshold
+        if self.total_updates >= 50:  # No early termination during initial learning
+            if not self.early_terminated and pos_error > self.curr_pose_error_threshold:
+                # Don't actually terminate the episode, just mark it as terminated
+                # and zero out future rewards (DeepMimic approach)
+                self.early_terminated = True
+                if self.episode_count % 10 == 0:
+                    print(f"Early termination at frame {self.current_idx}. Position error: {pos_error:.4f}")
         
         # If early terminated, set reward to 0
         if self.early_terminated:
@@ -420,10 +420,10 @@ def ppo_update(model, optimizer, states, actions, log_probs, returns, advantages
 print("Starting DeepMimic-style PPO training...")
 
 # Training parameters
-num_episodes = 10000  # Increased for better learning
+num_episodes = 1000  # Increased for better learning
 max_steps_per_episode = 1000
 max_total_steps = 500000  # Cap total training steps
-eval_interval = 200
+eval_interval = 50
 update_interval = 2048  # PPO update after this many steps
 
 # Storage for combined episodes
