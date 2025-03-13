@@ -21,10 +21,10 @@ class RotatedRenderWrapper(gym.Wrapper):
         rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
         return rotated_frame
 
-# Improved DeepMimic-style wrapper with proper reference state initialization and curriculum learning
+# Improved DeepMimic-style wrapper with advanced rewards
 class DeepMimicRewardWrapper(gym.Wrapper):
     def __init__(self, env, reference_data, state_mean, state_std, action_mean, action_std, 
-                 w_p=0.5, w_v=0.5, w_e=0.0, w_tc=0.0):
+                 w_p=0.4, w_v=0.4, w_e=0.1, w_c=0.1):
         super(DeepMimicRewardWrapper, self).__init__(env)
         self.reference_data = reference_data
         self.state_mean = state_mean
@@ -33,10 +33,10 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         self.action_std = action_std
         
         # Weights for different reward components
-        self.w_p = w_p  # pose error weight - reduced from 0.65
-        self.w_v = w_v  # velocity error weight - increased from 0.3
+        self.w_p = w_p  # pose error weight (balanced with velocity)
+        self.w_v = w_v  # velocity error weight
         self.w_e = w_e  # end-effector error weight
-        self.w_tc = w_tc  # task-specific weight
+        self.w_c = w_c  # center of mass & foot contact weight
         
         self.current_idx = 0
         self.max_idx = len(reference_data['states']) - 1
@@ -46,28 +46,48 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         self.pos_indices = list(range(0, self.state_dim // 2))
         self.vel_indices = list(range(self.state_dim // 2, self.state_dim))
         
+        # End effector indices (approximate for humanoid)
+        # These will typically be the extremities (hands and feet)
+        self.left_foot_idx = 3  # Example index, adjust based on actual model
+        self.right_foot_idx = 6  # Example index, adjust based on actual model
+        self.left_hand_idx = 9   # Example index, adjust based on actual model
+        self.right_hand_idx = 12  # Example index, adjust based on actual model
+        self.end_effector_indices = [self.left_foot_idx, self.right_foot_idx, 
+                                    self.left_hand_idx, self.right_hand_idx]
+        
         # Curriculum learning for early termination
-        self.base_pose_error_threshold = 5.0
-        self.max_pose_error_threshold = 10.0
+        self.base_pose_error_threshold = 7.0  # More lenient than original
+        self.max_pose_error_threshold = 12.0  # Gradually increase to this
         self.curr_pose_error_threshold = self.base_pose_error_threshold
         self.early_terminated = False
         
+        # Recovery tracking
+        self.prev_pos_error = None
+        self.recovery_counter = 0
+        
+        # Phase tracking for gait cycle rewards
+        self.phase_counter = 0
+        self.phase_length = 20  # Approximate steps in one gait cycle
+        
         # Training progress tracking
         self.total_updates = 0
-        self.max_updates = 500
+        self.max_updates = 1000
         self.episode_count = 0
         self.total_rewards = []
         
         print(f"State dimensions: {self.state_dim}")
         print(f"Position indices: {len(self.pos_indices)} indices")
         print(f"Velocity indices: {len(self.vel_indices)} indices")
+        print(f"End effector indices: {self.end_effector_indices}")
         
     def reset(self, **kwargs):
-        # CRITICAL FIX: Random Reference State Initialization (RSI)
-        # Sample a random starting point in the reference motion
+        # Random Reference State Initialization (RSI)
         self.current_idx = np.random.randint(0, self.max_idx)
         self.early_terminated = False
         self.episode_count += 1
+        self.phase_counter = 0
+        self.prev_pos_error = None
+        self.recovery_counter = 0
         
         # Update early termination threshold based on curriculum progress
         progress = min(self.total_updates / self.max_updates, 1.0)
@@ -100,41 +120,78 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         norm_obs = (obs - self.state_mean) / self.state_std
         norm_ref_state = (ref_state - self.state_mean) / self.state_std
         
-        # CRITICAL FIX: Separate position and velocity components for reward calculation
-        # Position error (first half of state vector)
+        # POSITION COMPONENTS
         pos_error = np.mean(np.square(
             norm_obs[self.pos_indices] - norm_ref_state[self.pos_indices]
         ))
         
-        # Velocity error (second half of state vector)
+        # VELOCITY COMPONENTS
         vel_error = np.mean(np.square(
             norm_obs[self.vel_indices] - norm_ref_state[self.vel_indices]
         ))
         
-        # CRITICAL FIX: Use less aggressive dampening for better learning signal
-        pose_reward = math.exp(-0.8 * pos_error)  # Less aggressive dampening
-        velocity_reward = math.exp(-0.001 * vel_error)  # Much more lenient for velocities
+        # END-EFFECTOR SPECIFIC REWARD
+        ee_error = 0.0
+        if self.end_effector_indices:
+            ee_positions = [norm_obs[idx] for idx in self.end_effector_indices]
+            ref_ee_positions = [norm_ref_state[idx] for idx in self.end_effector_indices]
+            ee_error = np.mean([np.square(ee - ref_ee) for ee, ref_ee in zip(ee_positions, ref_ee_positions)])
         
-        # Calculate end-effector reward (simplified for now)
-        end_effector_reward = 1.0
+        # CENTER OF MASS REWARD
+        # Assuming root position is at index 0
+        com_error = np.square(norm_obs[0] - norm_ref_state[0])
+        
+        # FOOT CONTACT REWARD
+        # This is a placeholder - in a real implementation, you would check 
+        # contact states between feet and ground
+        foot_contact_reward = 1.0
+        
+        # PHASE-BASED REWARDS
+        # Different emphasis based on gait phase
+        self.phase_counter = (self.phase_counter + 1) % self.phase_length
+        phase_factor = np.sin(self.phase_counter / self.phase_length * 2 * np.pi) * 0.5 + 0.5
+        
+        # RECOVERY REWARD
+        recovery_reward = 0.0
+        if self.prev_pos_error is not None:
+            # If error is decreasing, provide recovery reward
+            if pos_error < self.prev_pos_error:
+                self.recovery_counter += 1
+                recovery_reward = 0.05 * min(self.recovery_counter, 10)  # Cap at 0.5
+            else:
+                self.recovery_counter = 0
+        self.prev_pos_error = pos_error
+        
+        # Calculate rewards with improved scaling factors
+        pose_reward = math.exp(-0.8 * pos_error)
+        velocity_reward = math.exp(-0.002 * vel_error)  # More lenient scaling for velocities
+        end_effector_reward = math.exp(-1.0 * ee_error) if ee_error > 0 else 1.0
+        com_reward = math.exp(-1.0 * com_error)
+        
+        # Phase weighting - emphasize different aspects during gait cycle
+        if self.phase_counter < self.phase_length / 2:
+            # Stance phase - emphasize stability
+            stance_factor = 1.2
+            swing_factor = 0.8
+        else:
+            # Swing phase - emphasize motion
+            stance_factor = 0.8
+            swing_factor = 1.2
         
         # Combine rewards using weights
         imitation_reward = (
-            self.w_p * pose_reward + 
-            self.w_v * velocity_reward + 
-            self.w_e * end_effector_reward
+            self.w_p * pose_reward * stance_factor + 
+            self.w_v * velocity_reward * swing_factor + 
+            self.w_e * end_effector_reward + 
+            self.w_c * (com_reward + foot_contact_reward) / 2 +
+            recovery_reward  # Add recovery bonus
         )
         
-        # Add task reward if needed
-        task_reward = self.w_tc * reward  # original environment reward
-        combined_reward = imitation_reward + task_reward
+        combined_reward = imitation_reward
         
-        # CRITICAL FIX: Early termination check based on position error only
-        # Implement warmup period and curriculum-based threshold
+        # Early termination check based on position error
         if self.total_updates >= 50:  # No early termination during initial learning
             if not self.early_terminated and pos_error > self.curr_pose_error_threshold:
-                # Don't actually terminate the episode, just mark it as terminated
-                # and zero out future rewards (DeepMimic approach)
                 self.early_terminated = True
                 if self.episode_count % 10 == 0:
                     print(f"Early termination at frame {self.current_idx}. Position error: {pos_error:.4f}")
@@ -149,15 +206,18 @@ class DeepMimicRewardWrapper(gym.Wrapper):
         # Add extra info for debugging
         info['pose_reward'] = pose_reward
         info['velocity_reward'] = velocity_reward
+        info['end_effector_reward'] = end_effector_reward
+        info['com_reward'] = com_reward
+        info['recovery_reward'] = recovery_reward
         info['position_error'] = pos_error
         info['velocity_error'] = vel_error
+        info['phase_counter'] = self.phase_counter
         info['reference_frame'] = self.current_idx
         info['early_terminated'] = self.early_terminated
         
         return obs, combined_reward, terminated, truncated, info
     
     def set_update_counter(self, update_count):
-        # Allow the PPO trainer to tell the environment how many updates have occurred
         self.total_updates = update_count
 
 # Create needed directories
@@ -182,7 +242,7 @@ env = gym.make(
 )
 
 # -----------------------------------------------------------------------------
-# Create dataset from the underlying loco_mujoco environment.
+# Create dataset from the underlying loco_mujoco environment
 # -----------------------------------------------------------------------------
 dataset = env.unwrapped.create_dataset()
 
@@ -220,10 +280,10 @@ env = DeepMimicRewardWrapper(env, dataset, state_mean, state_std, action_mean, a
 env = RotatedRenderWrapper(env)
 
 # Wrap with RecordVideo to automatically record episodes
-env = gym.wrappers.RecordVideo(env, video_folder=video_folder, episode_trigger=lambda ep_id: ep_id % 50 == 0)
+env = gym.wrappers.RecordVideo(env, video_folder=video_folder, episode_trigger=lambda ep_id: ep_id % 100 == 0)
 
 # -----------------------------------------------------------------------------
-# Define PPO network architecture (improved version)
+# Define PPO network architecture
 # -----------------------------------------------------------------------------
 state_dim = states.shape[1]
 action_dim = actions.shape[1]
@@ -233,7 +293,7 @@ gamma = 0.995  # Increased discount factor for longer-term credit assignment
 lam = 0.95    # GAE lambda parameter
 eps_clip = 0.2  # PPO clip parameter
 ppo_epochs = 10  # PPO epochs per update
-mini_batch_size = 64  # Mini batch size
+mini_batch_size = 128  # Increased batch size for more stable updates
 value_coef = 0.5  # Value loss coefficient
 entropy_coef = 0.015  # Slightly increased for more exploration
 initial_lr = 3e-4  # Learning rate
@@ -317,8 +377,16 @@ class ActorCritic(nn.Module):
 model = ActorCritic(state_dim, action_dim)
 optimizer = optim.Adam(model.parameters(), lr=initial_lr, eps=1e-5)
 
-# Create scheduler for learning rate decay
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.75)
+# Create learning rate scheduler with warmup and decay
+def lr_lambda(epoch):
+    # Warm up for first 100 updates
+    if epoch < 100:
+        return epoch / 100  # Linear warmup
+    else:
+        # Then decay for the rest
+        return 1.0 * (0.75 ** ((epoch - 100) // 100))  # Exponential decay after warmup
+
+scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
 # -----------------------------------------------------------------------------
 # PPO training functions (with fixes)
@@ -406,7 +474,7 @@ def ppo_update(model, optimizer, states, actions, log_probs, returns, advantages
             total_entropy += entropy.mean().item()
     
     # Return average losses
-    num_updates = ppo_epochs * (len(states) // mini_batch_size)
+    num_updates = ppo_epochs * (len(states) // mini_batch_size + 1)
     if num_updates == 0:
         return 0, 0, 0
     
@@ -417,26 +485,14 @@ def ppo_update(model, optimizer, states, actions, log_probs, returns, advantages
 # -----------------------------------------------------------------------------
 # Main training loop with improvements
 # -----------------------------------------------------------------------------
-print("Starting DeepMimic-style PPO training...")
+print("Starting Advanced DeepMimic-style PPO training...")
 
 # Training parameters
-num_episodes = 1000  # Increased for better learning
+num_episodes = 25000  # Increased from 100 to 2500 for better learning
 max_steps_per_episode = 1000
-max_total_steps = 500000  # Cap total training steps
-eval_interval = 50
+max_total_steps = 10000000  # Cap total training steps
+eval_interval = 100
 update_interval = 2048  # PPO update after this many steps
-
-# Storage for combined episodes
-all_states = []
-all_actions = []
-all_log_probs = []
-all_rewards = []
-all_values = []
-all_masks = []
-
-total_steps = 0
-episode = 0
-update_number = 0
 
 # For tracking training progress
 episode_rewards = []
@@ -451,6 +507,10 @@ buffer_log_probs = []
 buffer_rewards = []
 buffer_values = []
 buffer_masks = []
+
+total_steps = 0
+episode = 0
+update_number = 0
 
 # Main training loop
 while total_steps < max_total_steps and episode < num_episodes:
@@ -494,11 +554,12 @@ while total_steps < max_total_steps and episode < num_episodes:
         if step % 100 == 0:
             pose_reward = info.get('pose_reward', 0)
             vel_reward = info.get('velocity_reward', 0)
-            pos_error = info.get('position_error', 0)
-            vel_error = info.get('velocity_error', 0)
+            ee_reward = info.get('end_effector_reward', 0)
+            com_reward = info.get('com_reward', 0)
+            rec_reward = info.get('recovery_reward', 0)
             print(f"Step {step} - Pose: {pose_reward:.4f}, Vel: {vel_reward:.4f}, "
-                  f"PosErr: {pos_error:.4f}, VelErr: {vel_error:.4f}, "
-                  f"Reward: {reward:.4f}")
+                  f"EE: {ee_reward:.4f}, CoM: {com_reward:.4f}, Rec: {rec_reward:.4f}, "
+                  f"Total: {reward:.4f}")
         
         # Check early termination
         if info.get('early_terminated', False):
@@ -546,7 +607,7 @@ while total_steps < max_total_steps and episode < num_episodes:
                 returns, advantages, eps_clip, value_coef, entropy_coef
             )
             
-            # Decay learning rate
+            # Update learning rate with scheduler
             scheduler.step()
             
             # Clear the buffer
@@ -570,53 +631,11 @@ while total_steps < max_total_steps and episode < num_episodes:
             # Save model every 100 updates
             if update_number % 100 == 0:
                 torch.save(model.state_dict(), f"{models_folder}/deepmimic_update_{update_number}.pt")
-                
-                # Save training stats
-                np.save(f"{logs_folder}/rewards_{update_number}.npy", np.array(episode_rewards))
-                np.save(f"{logs_folder}/lengths_{update_number}.npy", np.array(episode_lengths))
-                
-                # Plot progress if matplotlib is available
-                try:
-                    import matplotlib.pyplot as plt
-                    plt.figure(figsize=(12, 8))
-                    plt.subplot(2, 1, 1)
-                    plt.plot(episode_rewards)
-                    plt.title('Episode Rewards')
-                    plt.grid(True)
-                    
-                    plt.subplot(2, 1, 2)
-                    plt.plot(episode_lengths)
-                    plt.title('Episode Lengths')
-                    plt.grid(True)
-                    
-                    plt.tight_layout()
-                    plt.savefig(f"{logs_folder}/training_progress_{update_number}.png")
-                    plt.close()
-                except ImportError:
-                    print("Matplotlib not available for plotting")
-    
-    # Calculate final returns for this episode
-    with torch.no_grad():
-        # Get value for the final state if not done
-        if not done:
-            next_state = (obs - state_mean) / state_std
-            next_state_tensor = torch.FloatTensor(next_state).unsqueeze(0)
-            _, _, next_value = model.forward(next_state_tensor)
-            next_value_item = next_value.item()
-        else:
-            next_value_item = 0.0
-    
-    # Compute advantage estimates for this episode
-    episode_returns = compute_gae(next_value_item, episode_rewards, episode_masks, 
-                                 episode_values, gamma, lam)
     
     # Log episode stats
     episode_length = step
     episode_lengths.append(episode_length)
     episode_rewards.append(episode_reward)
-    
-    if hasattr(env.unwrapped, 'total_rewards'):
-        env.unwrapped.total_rewards.append(episode_reward)
     
     print(f"Episode {episode}/{num_episodes} - Steps: {episode_length} - Reward: {episode_reward:.4f}")
     
@@ -652,7 +671,7 @@ while total_steps < max_total_steps and episode < num_episodes:
             
             # Get deterministic action
             with torch.no_grad():
-                eval_action = model.get_action(eval_norm_obs, deterministic=True)[0]
+                eval_action = model.get_action(eval_norm_obs, deterministic=True)
             
             # Denormalize action
             eval_denorm_action = eval_action * action_std + action_mean
@@ -680,6 +699,13 @@ torch.save(model.state_dict(), f"{models_folder}/deepmimic_final.pt")
 # -----------------------------------------------------------------------------
 model.eval()
 
+# Load the best model for final evaluation
+try:
+    model.load_state_dict(torch.load(f"{models_folder}/deepmimic_best.pt"))
+    print("Loaded best model for final evaluation")
+except:
+    print("Using final trained model for evaluation")
+
 # Create a clean environment for final evaluation
 final_env = DeepMimicRewardWrapper(
     gym.make("LocoMujoco", env_name="HumanoidTorque.run", dataset_type="perfect", render_mode="rgb_array"),
@@ -703,7 +729,7 @@ try:
         
         # Get action (deterministically for evaluation)
         with torch.no_grad():
-            action = model.get_action(norm_obs, deterministic=True)[0]
+            action = model.get_action(norm_obs, deterministic=True)
             
         # Denormalize action for the environment
         denorm_action = action * action_std + action_mean
