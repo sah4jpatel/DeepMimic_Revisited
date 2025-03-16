@@ -1,0 +1,225 @@
+<mujoco model="humanoid">
+    <compiler angle="radian"/>
+    <option gravity="0 0 -9.81"/>
+    <asset>
+        <texture builtin="gradient" height="100" rgb1=".4 .5 .6" rgb2="0 0 0" type="skybox" width="100"/>
+        <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
+        <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+        <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
+        <material name="geom" texture="texgeom" texuniform="true"/>
+    </asset>
+    <worldbody>
+        <geom condim="3" friction="1 .1 .1" material="MatPlane" name="floor" pos="0 0 -0.9" rgba="0.8 0.9 0.8 1" size="20 20 0.125" type="plane"/>
+	<body name="root" pos="0 0 0">
+		<geom type="sphere" name="root" mass="2.0" size="0.06" pos="0 0 -0.02" rgba="0.4706 0.549 0.6863 0.5"/>
+		<joint name="root" type="free" pos="0 0 0" />
+		<site type="sphere" name="joint_left_upper_leg" pos="-0.05 -0.04 -0.06" size="0.035" />
+		<site type="sphere" name="joint_right_upper_leg" pos="-0.05 0.04 -0.06" size="0.035" />
+		<site type="sphere" name="joint_tail" pos="-0.045 0 -0.005" size="0.0325" />
+		<body name="spine0" pos="0 0 0">
+			<geom type="sphere" name="spine0" mass="3.0" size="0.08" pos="0.17 0 -0.025" rgba="0.4706 0.549 0.6863 0.5"/>
+			<joint type="hinge" name="spine0_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="spine0_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="spine0_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+			<site type="sphere" name="joint_spine0" pos="0.075 0 -0.02" size="0.05" />
+			<body name="spine1" pos="0.2375 0 0">
+				<geom type="sphere" name="spine1" mass="7.0" size="0.11" pos="0.17 0 -0.04" rgba="0.4706 0.549 0.6863 0.5"/>
+				<joint type="hinge" name="spine1_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+				<joint type="hinge" name="spine1_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+				<joint type="hinge" name="spine1_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+				<site type="sphere" name="joint_spine1" pos="0.035 0 -0.02" size="0.0725" />
+				<site type="sphere" name="joint_neck" pos="0.25 0 -0.01" size="0.055" />
+				<site type="sphere" name="joint_left_shoulder" pos="0.25 -0.075 -0.09" size="0.045" />
+				<site type="sphere" name="joint_right_shoulder" pos="0.25 0.075 -0.09" size="0.045" />
+				<body name="neck" pos="0.28135 0 0">
+					<geom type="capsule" name="neck" mass="1.0" fromto="0.075 0 -0.04 0.075 0 0.04" size="0.035" rgba="0.4706 0.549 0.6863 0.5"/>
+					<joint type="hinge" name="neck_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="neck_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="neck_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					<site type="sphere" name="joint_head" pos="0.17 0 0" size="0.035" />
+					<body name="head" pos="0.175 0 0">
+						<geom type="box" name="head" mass="1.5" size="0.06 0.05 0.095" pos="0.08 0 -0.04" rgba="0.4706 0.549 0.6863 0.5"/>
+						<joint type="hinge" name="head_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+						<joint type="hinge" name="head_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+						<joint type="hinge" name="head_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					</body>
+				</body>
+				<body name="left_shoulder" pos="0.304074 -0.106071 -0.109983">
+					<geom type="capsule" name="left_shoulder" mass="1.5" fromto="0 0 -0.11 0 0 0.009999999999999995" size="0.04" rgba="0.3529 0.41176 0.47059 0.5"/>
+					<joint type="hinge" name="left_shoulder_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="left_shoulder_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="left_shoulder_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					<site type="sphere" name="joint_left_forearm" pos="0 0 -0.15" size="0.0275" />
+					<body name="left_forearm" pos="0 0 -0.19">
+						<geom type="capsule" name="left_forearm" mass="1.0" fromto="0 0 -0.185 0 0 0.02500000000000001" size="0.03" rgba="0.3529 0.41176 0.47059 0.5"/>
+						<joint name="left_forearm" type="hinge" pos="0 0 0" axis="0 -1 0" range="0 3.14" />
+						<site type="sphere" name="joint_left_hand" pos="0 0 -0.215" size="0.02" />
+						<body name="left_hand" pos="0 0 -0.2225">
+							<geom type="box" name="left_hand" mass="0.5" size="0.02 0.025 0.04" pos="0 0 -0.04" rgba="0.3529 0.41176 0.47059 0.5"/>
+							<joint type="hinge" name="left_hand_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+							<joint type="hinge" name="left_hand_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+							<joint type="hinge" name="left_hand_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+							<site type="sphere" name="joint_left_finger" pos="0 0 -0.09" size="0.02" />
+							<body name="left_finger" pos="0 0 -0.09">
+								<geom type="box" name="left_finger" mass="0.5" size="0.04 0.025 0.02" pos="0.012 0 -0.02" rgba="0.3529 0.41176 0.47059 0.5"/>
+								<joint type="hinge" name="left_finger_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+								<joint type="hinge" name="left_finger_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+								<joint type="hinge" name="left_finger_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+							</body>
+						</body>
+					</body>
+				</body>
+				<body name="right_shoulder" pos="0.304074 0.106071 -0.109983">
+					<geom type="capsule" name="right_shoulder" mass="1.5" fromto="0 0 -0.11 0 0 0.009999999999999995" size="0.04" rgba="0.6392 0.6941 0.7372 0.5"/>
+					<joint type="hinge" name="right_shoulder_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="right_shoulder_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="right_shoulder_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					<site type="sphere" name="joint_right_forearm" pos="0 0 -0.15" size="0.0275" />
+					<body name="right_forearm" pos="0 0 -0.19">
+						<geom type="capsule" name="right_forearm" mass="1.0" fromto="0 0 -0.185 0 0 0.02500000000000001" size="0.03" rgba="0.6392 0.6941 0.7372 0.5"/>
+						<joint name="right_forearm" type="hinge" pos="0 0 0" axis="0 -1 0" range="0 3.14" />
+						<site type="sphere" name="joint_right_hand" pos="0 0 -0.215" size="0.02" />
+						<body name="right_hand" pos="0 0 -0.2225">
+							<geom type="box" name="right_hand" mass="0.5" size="0.02 0.025 0.04" pos="0 0 -0.04" rgba="0.6392 0.6941 0.7372 0.5"/>
+							<joint type="hinge" name="right_hand_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+							<joint type="hinge" name="right_hand_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+							<joint type="hinge" name="right_hand_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+							<site type="sphere" name="joint_right_finger" pos="0 0 -0.09" size="0.02" />
+							<body name="right_finger" pos="0 0 -0.09">
+								<geom type="box" name="right_finger" mass="0.5" size="0.04 0.025 0.02" pos="0.012 0 -0.02" rgba="0.6392 0.6941 0.7372 0.5"/>
+								<joint type="hinge" name="right_finger_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+								<joint type="hinge" name="right_finger_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+								<joint type="hinge" name="right_finger_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+							</body>
+						</body>
+					</body>
+				</body>
+			</body>
+		</body>
+		<body name="left_upper_leg" pos="-0.074803 -0.05986 -0.095825">
+			<geom type="capsule" name="left_upper_leg" mass="1.5" fromto="0 0 -0.155 0 0 0.04500000000000001" size="0.045" rgba="0.3529 0.41176 0.47059 0.5"/>
+			<joint type="hinge" name="left_upper_leg_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="left_upper_leg_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="left_upper_leg_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+			<site type="sphere" name="joint_left_leg" pos="0 0 -0.2" size="0.03" />
+			<body name="left_leg" pos="0 0 -0.2">
+				<geom type="capsule" name="left_leg" mass="1.0" fromto="0 0 -0.155 0 0 -0.045000000000000005" size="0.03" rgba="0.3529 0.41176 0.47059 0.5"/>
+				<joint name="left_leg" type="hinge" pos="0 0 0" axis="0 -1 0" range="-3.14 0" />
+				<site type="sphere" name="joint_left_foot" pos="0 0 -0.195" size="0.0225" />
+				<body name="left_foot" pos="0 0 -0.225">
+					<geom type="box" name="left_foot" mass="0.5" size="0.025 0.025 0.1" pos="0 0 -0.03" rgba="0.3529 0.41176 0.47059 0.5"/>
+					<joint type="hinge" name="left_foot_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="left_foot_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="left_foot_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					<site type="sphere" name="joint_left_toe" pos="0 0 -0.14" size="0.02" />
+					<body name="left_toe" pos="0 0 -0.135">
+						<geom type="box" name="left_toe" mass="0.5" size="0.045 0.025 0.02" pos="0.015 0 -0.02" rgba="0.3529 0.41176 0.47059 0.5"/>
+						<joint type="hinge" name="left_toe_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+						<joint type="hinge" name="left_toe_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+						<joint type="hinge" name="left_toe_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					</body>
+				</body>
+			</body>
+		</body>
+		<body name="right_upper_leg" pos="-0.074803 0.05986 -0.095825">
+			<geom type="capsule" name="right_upper_leg" mass="1.5" fromto="0 0 -0.155 0 0 0.04500000000000001" size="0.045" rgba="0.6392 0.6941 0.7372 0.5"/>
+			<joint type="hinge" name="right_upper_leg_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="right_upper_leg_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="right_upper_leg_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+			<site type="sphere" name="joint_right_leg" pos="0 0 -0.2" size="0.03" />
+			<body name="right_leg" pos="0 0 -0.2">
+				<geom type="capsule" name="right_leg" mass="1.0" fromto="0 0 -0.155 0 0 -0.045000000000000005" size="0.03" rgba="0.6392 0.6941 0.7372 0.5"/>
+				<joint name="right_leg" type="hinge" pos="0 0 0" axis="0 -1 0" range="-3.14 0" />
+				<site type="sphere" name="joint_right_foot" pos="0 0 -0.195" size="0.0225" />
+				<body name="right_foot" pos="0 0 -0.225">
+					<geom type="box" name="right_foot" mass="0.5" size="0.025 0.025 0.1" pos="0 0 -0.03" rgba="0.6392 0.6941 0.7372 0.5"/>
+					<joint type="hinge" name="right_foot_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="right_foot_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+					<joint type="hinge" name="right_foot_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					<site type="sphere" name="joint_right_toe" pos="0 0 -0.14" size="0.02" />
+					<body name="right_toe" pos="0 0 -0.135">
+						<geom type="box" name="right_toe" mass="0.5" size="0.045 0.025 0.02" pos="0.015 0 -0.02" rgba="0.6392 0.6941 0.7372 0.5"/>
+						<joint type="hinge" name="right_toe_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+						<joint type="hinge" name="right_toe_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+						<joint type="hinge" name="right_toe_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+					</body>
+				</body>
+			</body>
+		</body>
+		<body name="tail0" pos="-0.086 0 0">
+			<geom type="capsule" name="tail0" mass="0.5" fromto="-0.1 0 -0.07 -0.1 0 0.07" size="0.025" rgba="0.4706 0.549 0.6863 0.5"/>
+			<joint type="hinge" name="tail0_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="tail0_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+			<joint type="hinge" name="tail0_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+			<site type="sphere" name="joint_tail0" pos="0 0 0" size="0.025" />
+			<body name="tail1" pos="-0.2 0 0">
+				<geom type="capsule" name="tail1" mass="0.25" fromto="-0.11 0 -0.085 -0.11 0 0.085" size="0.02" rgba="0.3 0.3 0.3 0.5"/>
+				<joint type="hinge" name="tail1_0" axis="1 0 0" pos="0 0 0" range="1 0" />
+				<joint type="hinge" name="tail1_1" axis="0 1 0" pos="0 0 0" range="1 0" />
+				<joint type="hinge" name="tail1_2" axis="0 0 1" pos="0 0 0" range="1 0" />
+				<site type="sphere" name="joint_tail1" pos="0 0 0" size="0.02" />
+			</body>
+		</body>
+	</body>
+	</worldbody>
+<actuator>
+		<motor joint="spine0_0" name="spine0_0" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="spine0_1" name="spine0_1" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="spine0_2" name="spine0_2" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="spine1_0" name="spine1_0" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="spine1_1" name="spine1_1" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="spine1_2" name="spine1_2" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="neck_0" name="neck_0" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="neck_1" name="neck_1" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="neck_2" name="neck_2" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="head_0" name="head_0" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="head_1" name="head_1" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="head_2" name="head_2" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="left_shoulder_0" name="left_shoulder_0" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="left_shoulder_1" name="left_shoulder_1" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="left_shoulder_2" name="left_shoulder_2" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="left_forearm" name="left_forearm" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="left_hand_0" name="left_hand_0" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="left_hand_1" name="left_hand_1" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="left_hand_2" name="left_hand_2" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="left_finger_0" name="left_finger_0" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="left_finger_1" name="left_finger_1" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="left_finger_2" name="left_finger_2" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="right_shoulder_0" name="right_shoulder_0" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="right_shoulder_1" name="right_shoulder_1" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="right_shoulder_2" name="right_shoulder_2" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="right_forearm" name="right_forearm" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="right_hand_0" name="right_hand_0" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="right_hand_1" name="right_hand_1" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="right_hand_2" name="right_hand_2" ctrllimited="true" ctrlrange="-1 1" gear="5.333333333333333" />
+		<motor joint="right_finger_0" name="right_finger_0" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="right_finger_1" name="right_finger_1" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="right_finger_2" name="right_finger_2" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="left_upper_leg_0" name="left_upper_leg_0" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="left_upper_leg_1" name="left_upper_leg_1" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="left_upper_leg_2" name="left_upper_leg_2" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="left_leg" name="left_leg" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="left_foot_0" name="left_foot_0" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="left_foot_1" name="left_foot_1" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="left_foot_2" name="left_foot_2" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="left_toe_0" name="left_toe_0" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="left_toe_1" name="left_toe_1" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="left_toe_2" name="left_toe_2" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="right_upper_leg_0" name="right_upper_leg_0" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="right_upper_leg_1" name="right_upper_leg_1" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="right_upper_leg_2" name="right_upper_leg_2" ctrllimited="true" ctrlrange="-1 1" gear="13.333333333333334" />
+		<motor joint="right_leg" name="right_leg" ctrllimited="true" ctrlrange="-1 1" gear="10.0" />
+		<motor joint="right_foot_0" name="right_foot_0" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="right_foot_1" name="right_foot_1" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="right_foot_2" name="right_foot_2" ctrllimited="true" ctrlrange="-1 1" gear="6.666666666666667" />
+		<motor joint="right_toe_0" name="right_toe_0" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="right_toe_1" name="right_toe_1" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="right_toe_2" name="right_toe_2" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="tail0_0" name="tail0_0" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="tail0_1" name="tail0_1" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="tail0_2" name="tail0_2" ctrllimited="true" ctrlrange="-1 1" gear="3.3333333333333335" />
+		<motor joint="tail1_0" name="tail1_0" ctrllimited="true" ctrlrange="-1 1" gear="1.6666666666666667" />
+		<motor joint="tail1_1" name="tail1_1" ctrllimited="true" ctrlrange="-1 1" gear="1.6666666666666667" />
+		<motor joint="tail1_2" name="tail1_2" ctrllimited="true" ctrlrange="-1 1" gear="1.6666666666666667" />
+	</actuator>
+</mujoco>
