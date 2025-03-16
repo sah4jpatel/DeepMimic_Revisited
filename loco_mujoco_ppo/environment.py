@@ -27,12 +27,17 @@ class ImitationReward(RewardInterface):
             The reward for the current transition.
 
         """
-        target_obs = self.target_trajectory.get_next_sample()
-        if target_obs is None:
+        target_sample = self.target_trajectory.get_next_sample()
+        if target_sample is None:
             self.target_trajectory.reset_trajectory()
-            target_obs = self.env._create_observation(self.trajectories.get_current_sample())
+            target_sample = self.trajectories.get_current_sample()
+        # print("target sample: " + str(len(target_sample)))
+        target_obs = np.array(self.env._create_observation(target_sample))
+        # print("target obs: " + str(target_obs.shape))
+        # print("obs spec: " + str(len(self.obs_spec)))
+        # print("state: " + str(state.shape))
 
-        assert len(target_obs) == len(self.obs_spec)
+        assert target_obs.shape == state.shape
 
         # for key_name_ot, value in zip(self.obs_spec, target_obs):
         #     key, name, ot = key_name_ot
@@ -46,7 +51,16 @@ class ImitationReward(RewardInterface):
         #     elif ot == ObservationType.SITE_ROT:
         #         # self._data.site(name).xmat = value
         #         print('site rot')
-        return np.linalg.norm(target_obs - state)
+        diff = target_obs - state
+        reward = np.exp(-0.1 * np.linalg.norm(diff))
+        # print("difs: " + str(np.square(target_obs - state)))
+        # print("target: " + str(target_obs))
+        # print("position norm: " + str(np.linalg.norm(diff[:15])))
+        # print("velocity norm: " + str(np.linalg.norm(diff[15:])))
+        # print("positions: " + str(self.env._get_observation_space()[0][:15]))
+        # print("velocities: " + str(self.env._get_observation_space()[0][15:]))
+        # print("reward: " + str(reward))
+        return reward
         
 
     def reset_state(self):
@@ -63,18 +77,18 @@ class DeepMimicGymEnv(gym.Env):
 
     def __init__(self):
         super(DeepMimicGymEnv, self).__init__()
-        self.env = HumanoidTorque.generate()
+        self.env = HumanoidTorque.generate(dataset_type='perfect', random_start=True)
         self.env._reward_function = ImitationReward(self.env)
         self.viewer = None
+        # self.action_space = self.env.info.action_space.shape[0]
 
     def reset(self):
+        # sample = self.env.trajectories.get_current_sample()
+        # self.env.reset(self.env._create_observation(sample))
         self.env.reset()
-        sample = self.env.trajectories.get_current_sample()
-        self.env.set_sim_state(sample)
         return self._get_obs()
 
     def _get_obs(self):
-        """Get observation (joint positions only, excluding root)"""
         return self.env._create_observation(self.env.obs_helper._build_obs(self.env._data))
 
     def step(self, action):
@@ -85,6 +99,8 @@ class DeepMimicGymEnv(gym.Env):
         # print(np.mean(action))
         obs, reward, _, _ = self.env.step(action) 
         done = self.env._has_fallen(obs)
+        # if done:
+        #     print("it fell")
 
         return obs, np.array(reward), np.array(done), {}
 

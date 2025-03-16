@@ -2,17 +2,17 @@ import torch
 from copy import deepcopy
 
 class TrajData:
-    def __init__(self, n_steps, n_envs, n_obs, n_actions):
-        s, e, o, a = n_steps, n_envs, n_obs, n_actions
+    def __init__(self, n_steps, n_obs, n_actions):
+        s, o, a = n_steps, n_obs, n_actions
         from torch import zeros
 
-        self.states = zeros((s, e, o))
-        self.actions = zeros((s, e, a))
-        self.rewards = zeros((s, e))
-        self.not_dones = zeros((s, e))
+        self.states = zeros((s, o))
+        self.actions = zeros((s, a))
+        self.rewards = zeros((s))
+        self.not_dones = zeros((s))
 
-        self.log_probs = zeros((s, e))
-        self.returns = zeros((s, e))
+        self.log_probs = zeros((s))
+        self.returns = zeros((s))
 
         self.n_steps = s
 
