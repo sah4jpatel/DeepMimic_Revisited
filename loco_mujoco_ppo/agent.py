@@ -39,8 +39,8 @@ class Agent(nn.Module):
             self.load_models()
 
     def save_models(self):
-        torch.save(self.policy.state_dict(), './models/policy_net4')
-        torch.save(self.value.state_dict(), './models/value_net4')
+        torch.save(self.policy.state_dict(), 'models/policy_net4')
+        torch.save(self.value.state_dict(), 'models/value_net4')
 
     def load_models(self):
         if os.path.exists('models/policy_net2') and os.path.exists('models/value_net4'):

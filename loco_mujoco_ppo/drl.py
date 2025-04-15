@@ -68,9 +68,9 @@ class DRL:
                 self.example.render()
                 self.envs.render()
                 # print("loss: " + str(self.agent.get_loss(self.traj_data).item()))
-                print("done: " + str(done))
-                print("reward: " + str(rewards.item()))
-                print("action: " + str(action))
+                # print("done: " + str(done))
+                # print("reward: " + str(rewards.item()))
+                # print("action: " + str(action))
                 time.sleep(0.1)
 
         # print("loss: " + str(self.agent.get_loss(self.traj_data).item()))
@@ -86,7 +86,7 @@ class DRL:
 
         # A primary benefit of PPO is that it can train for
         # many epochs on 1 rollout without going unstable
-        epochs = 100
+        epochs = 10
 
         for i in range(epochs):
 

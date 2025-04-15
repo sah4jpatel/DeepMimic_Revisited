@@ -80,12 +80,14 @@ class DeepMimicGymEnv(gym.Env):
         self.env = HumanoidTorque.generate(dataset_type='perfect', random_start=True)
         self.env._reward_function = ImitationReward(self.env)
         self.viewer = None
+        self.steps = 0
         # self.action_space = self.env.info.action_space.shape[0]
 
     def reset(self):
         # sample = self.env.trajectories.get_current_sample()
         # self.env.reset(self.env._create_observation(sample))
         self.env.reset()
+        self.steps = 0
         return self._get_obs()
 
     def _get_obs(self):
@@ -98,10 +100,13 @@ class DeepMimicGymEnv(gym.Env):
         # print(np.min(action))
         # print(np.mean(action))
         obs, reward, _, _ = self.env.step(action) 
-        done = self.env._has_fallen(obs)
-        # if done:
-        #     print("it fell")
-
+        # done = self.env._has_fallen(obs)
+        done = False
+        if done and self.steps != 0:
+            print(f"it fell after {self.steps} steps")
+            self.steps = 0
+        elif not done:
+            self.steps += 1
         return obs, np.array(reward), np.array(done), {}
 
     def render(self, speed=1.0):
