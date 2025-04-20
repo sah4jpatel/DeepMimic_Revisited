@@ -1,8 +1,4 @@
-"""
-    The file contains the PPO class to train with.
-    NOTE: All "ALG STEP"s are following the numbers from the original PPO pseudocode.
-            It can be found here: https://spinningup.openai.com/en/latest/_images/math/e62a8971472597f4b014c2da064f636ffe365ba3.svg
-"""
+
 
 import time
 
@@ -16,10 +12,8 @@ from torch.distributions import Categorical
 import torch.nn.functional as F
 
 class PPO:
-    """
-    Proximal Policy Optimization (PPO) with optional hierarchical imitation loss,
-    full logging, and checkpoint saving.
-    """
+
+
     def __init__(self, policy, critic, env, **hyperparameters):
         # Initialize hyperparameters and device
         self._init_hyperparameters(hyperparameters)
@@ -60,7 +54,7 @@ class PPO:
             'cov': self.cov_start
         }
 
-        # Seed for reproducibility
+
         if self.seed is not None:
             torch.manual_seed(self.seed)
 
@@ -74,32 +68,31 @@ class PPO:
         i_so_far = 0
 
         while t_so_far < total_timesteps:
-            # Optionally anneal covariance
+            
             if self.interp_cov and t_so_far <= total_timesteps/4 + self.timesteps_per_batch*2:
                 cov = max(self.cov_min,
                           self.cov_min + (self.cov_start - self.cov_min) * (1 - t_so_far / total_timesteps * 4))
                 self.logger['cov'] = cov
                 self.cov_mat = torch.diag(torch.full((self.act_dim,), cov)).to(self.device)
 
-            # Collect batch
+
             batch_obs, batch_acts, batch_log_probs, batch_rews, batch_lens, batch_vals, batch_dones = self.rollout()
             A_k = self.calculate_gae(batch_rews, batch_vals, batch_dones)
             V = self.critic(batch_obs).squeeze()
             batch_rtgs = A_k + V.detach()
 
-            # Update counters and logging
+
             t_so_far += np.sum(batch_lens)
             i_so_far += 1
             self.logger['t_so_far'] = t_so_far
             self.logger['i_so_far'] = i_so_far
 
-            # Normalize advantages
+
             A_k = (A_k - A_k.mean()) / (A_k.std() + 1e-10)
 
-            # PPO updates
+
             total_steps = batch_obs.size(0)
             for _ in range(self.n_updates_per_iteration):
-                # Update learning rates
                 new_lr = self.get_lr(t_so_far, total_timesteps, self.lr, self.end_lr)
                 new_clr = self.get_lr(t_so_far, total_timesteps, self.clr, self.end_clr)
                 self.actor_optim.param_groups[0]['lr'] = new_lr
@@ -122,41 +115,41 @@ class PPO:
                     mb_adv = A_k[mb_idx]
                     mb_rtgs = batch_rtgs[mb_idx]
 
-                    # Evaluate
+
                     V, curr_log_probs, entropy = self.evaluate(mb_obs, mb_acts)
                     ratios = torch.exp(curr_log_probs - mb_logp)
 
-                    # Surrogate loss
+
                     surr1 = ratios * mb_adv
                     surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * mb_adv
                     actor_loss = -torch.min(surr1, surr2).mean()
 
-                    # Add hierarchical imitation loss
+
                     if self.hier_coef > 0:
                         hier = self._compute_hierarchical_loss(mb_acts, mb_obs)
                         actor_loss += self.hier_coef * hier
 
-                    # Critic loss
+
                     critic_loss = F.mse_loss(V, mb_rtgs)
 
-                    # Actor step
+
                     self.actor_optim.zero_grad()
                     actor_loss.backward(retain_graph=True)
                     nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
                     self.actor_optim.step()
 
-                    # Critic step
+
                     self.critic_optim.zero_grad()
                     critic_loss.backward()
                     nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
                     self.critic_optim.step()
 
-                    # Record metrics
+
                     self.logger['actor_losses'].append(actor_loss.item())
                     self.logger['critic_losses'].append(critic_loss.item())
                     self.logger['entropy'].append(entropy.mean().item())
 
-                    # Early stopping on KL
+
                     approx_kl = ((ratios - 1) - (curr_log_probs - mb_logp)).mean()
                     if approx_kl > 1.5 * self.target_kl:
                         early_stop = True
@@ -164,7 +157,7 @@ class PPO:
                 if early_stop:
                     break
 
-            # Logging and checkpoints
+
             self._log_summary(t_so_far, total_timesteps)
             if i_so_far % self.save_freq == 0:
                 torch.save(self.actor.state_dict(), './ckpt/ppo_actor.pth')
@@ -179,18 +172,17 @@ class PPO:
         grouping parent and child joints.
         """
         device = actions.device
-        # Extract progress index
+        
         progress = obs[:, 0]
         num = len(self.env.ref_motion['qpos'])
         idx = (progress * num).long().clamp(0, num - 1)
 
-        # Reference qpos tensor
+
         ref_all = torch.tensor(np.stack(self.env.ref_motion['qpos']),
                                 dtype=torch.float, device=device)
         ref_qpos = ref_all[idx]
-        ref_actions = ref_qpos[:, 7:]  # skip root
-
-        # Define hierarchy groups (action indices)
+        ref_actions = ref_qpos[:, 7:] 
+        
         hier_groups = {
             (0,1,2):    [3,4,5,6,7,8,14,15,16,21,22,23],
             (3,4,5):    [],
@@ -282,7 +274,6 @@ class PPO:
         return V, log_probs, dist.entropy()
 
     def _init_hyperparameters(self, hyperparameters):
-        # PPO hyperparameters
         self.timesteps_per_batch        = 4096
         self.max_timesteps_per_episode  = 1600
         self.n_updates_per_iteration    = 10
@@ -308,10 +299,10 @@ class PPO:
         self.deterministic              = False
         self.seed                       = None
 
-        # Hierarchical loss coefficient
+
         self.hier_coef                  = hyperparameters.get('hier_coef', 0.0)
 
-        # Override defaults
+
         for name, val in hyperparameters.items():
             setattr(self, name, val)
 
@@ -333,12 +324,12 @@ class PPO:
         print(f"LR: {self.logger['lr']:.1e} | CLR: {self.logger['clr']:.1e} | Cov: {self.logger['cov']:.4f}")
         print(f"Iteration Time: {delta_t:.2f}s")
 
-        # Append to log file
+
         with open("run.txt", "a") as f:
             f.write(f"Iter {self.logger['i_so_far']}: EpLen {avg_lens:.2f} | EpRew {avg_ep_rew:.4f}")
             f.write(f" | A_Loss {avg_a_loss:.5f} | C_Loss {avg_c_loss:.5f}\n")
 
-        # Reset logs
+
         self.logger['batch_lens'].clear()
         self.logger['batch_rews'].clear()
         self.logger['actor_losses'].clear()

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Visualize a trained PPO + GAT checkpoint in the MuJoCo backflip environment.
-"""
+
 import argparse
 import time
 
@@ -53,16 +51,18 @@ def main():
     args = parse_args()
     torch.manual_seed(args.seed)
 
-    # Load and preprocess reference motion
+
     motion = load_data(args.motion)
     mj_model = mujoco.MjModel.from_xml_path(args.xml)
     mj_data = mujoco.MjData(mj_model)
     ref = motion_to_posvel(motion["Frames"], mj_model, mj_data)
 
-    # Create environment
+
+
     env = MuJoCoBackflipEnv(args.xml, ref)
 
-    # ----- Initialize GAT policy and MLP critic -----
+
+
     policy = GATPolicyNetwork(env, in_dim=4, hidden_dim=64, action_dim=env.action_dim)
     critic = nn.Sequential(
         nn.Linear(env.state_dim, 512),
@@ -70,18 +70,18 @@ def main():
         nn.Linear(512, 1)
     )
 
-    # Load checkpoints
+
     policy.load_state_dict(torch.load(args.actor_ckpt, map_location="cpu"))
     critic.load_state_dict(torch.load(args.critic_ckpt, map_location="cpu"))
 
-    # Build PPO wrapper
+
     ppo = PPO(policy, critic, env)
 
-    # Reset env
+
     state = env.reset(frame_idx=args.reset_frame)
     dt = 1.0 / args.hz
 
-    # Launch viewer
+
     with mujoco.viewer.launch_passive(env.model, env.data) as viewer:
         while viewer.is_running():
             with torch.no_grad():
