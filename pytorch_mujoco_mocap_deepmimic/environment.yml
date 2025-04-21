@@ -1,0 +1,14 @@
+name: deepmimic_revisited_mujoco
+channels:
+  - conda-forge  
+  - defaults
+dependencies:
+  - gymnasium
+  - numpy
+  - mujoco
+  - pyquaternion
+  - scipy
+  - pillow
+  - torch
+  - imageio
+  - tensorboard
